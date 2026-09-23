@@ -1,24 +1,13 @@
-import os
-from contextlib import asynccontextmanager
-from typing import AsyncIterator
-
-from dotenv import load_dotenv
 from fastapi import FastAPI
 
-from app.api.routes import router
-from app.integration.ticktick import TickTickClient
-from app.services.task_service import TaskService
+from app.routers.scheduler import router as scheduler_router
+from app.routers.tasks import router as tasks_router
 
-load_dotenv()
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    client = TickTickClient(os.getenv("TICKTICK_ACCESS_TOKEN", ""))
-    app.state.task_service = TaskService(client)
-    yield
-    await client.close()
+app = FastAPI(title="TickTick Task Manager")
+app.include_router(scheduler_router)
+app.include_router(tasks_router)
 
 
-app = FastAPI(title="TickTick Task Manager", lifespan=lifespan)
-app.include_router(router)
+@app.get("/health")
+async def health() -> dict[str, str]:
+    return {"status": "ok"}
