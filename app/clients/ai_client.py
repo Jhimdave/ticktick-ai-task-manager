@@ -88,7 +88,7 @@ class AIService:
 
     def estimate_duration( self, task_title: str, task_content: str, priority: int, min_minutes: int, max_minutes: int, enhance_content: bool = False ) -> dict:
         enhancement = (
-            "Also improve the title and write a concise, actionable description. "
+            "Also improve the title and write a concise, actionable description."
             "Return them as enhanced_title and description."
             if enhance_content
             else ""
@@ -127,7 +127,8 @@ class AIService:
             "or September 3. If no date is stated, set date to the current date. If no time is "
             "stated, set preferred_time to null so the application can assign an available slot. "
             "Choose a project for every task using one of the supplied projects and return its "
-            "exact id as project_id. Never invent a project id. For projects named or identified "
+            "exact id as project_id. But if the task have a given date and time put it into Appointment Project." 
+            "Never invent a project id. For projects named or identified "
             "as Appointment or Appointments, preserve any date and exact time stated by the user. "
             'Return ONLY JSON with this shape: {"tasks": [{"title": str, '
             '"description": str, "date": "YYYY-MM-DD", "preferred_time": '
