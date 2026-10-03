@@ -21,36 +21,67 @@ class TaskBreakdownService:
     ) -> TaskBreakdownResponse:
         timezone = ZoneInfo(settings.default_timezone)
         today = datetime.now(timezone).date()
+        projects = await self.ticktick.get_projects()
+        project_by_id = {str(project["id"]): project for project in projects}
         proposed_tasks = self.ai.break_down_task(
-            request.text, today.isoformat(), settings.default_timezone
+            request.text, today.isoformat(), settings.default_timezone, projects
         )
-        booked: dict[date, list[tuple[datetime, datetime]]] = {}
-        created: list[CreatedTask] = []
 
+        planned_tasks = []
         for proposed in proposed_tasks:
             title = str(proposed.get("title", "")).strip()
             if not title:
                 continue
 
+            project_id = str(proposed.get("project_id", "")).strip()
+            project = project_by_id.get(project_id)
+            if project is None:
+                raise ValueError(
+                    f"AI selected unknown project id {project_id!r} for task {title!r}"
+                )
+
+            planned_tasks.append((proposed, title, project_id, project))
+
+        booked: dict[date, list[tuple[datetime, datetime]]] = {}
+        created: list[CreatedTask] = []
+
+        for proposed, title, project_id, project in planned_tasks:
+            if settings.is_protected_project(project_id, project["name"]):
+                task_date = self._task_date(proposed.get("date"), today)
+                duration = self._duration(proposed.get("duration_minutes"))
+                start = self._appointment_start(
+                    task_date, proposed.get("preferred_time"), timezone
+                )
+                booked.setdefault(task_date, []).append(
+                    (start, start + timedelta(minutes=duration))
+                )
+
+        for proposed, title, project_id, project in planned_tasks:
             content = str(proposed.get("description", "")).strip()
             task_date = self._task_date(proposed.get("date"), today)
             duration = self._duration(proposed.get("duration_minutes"))
-            start = self._find_available_start(
-                task_date,
-                proposed.get("preferred_time"),
-                duration,
-                booked,
-                timezone,
-            )
+            if settings.is_protected_project(project_id, project["name"]):
+                start = self._appointment_start(
+                    task_date, proposed.get("preferred_time"), timezone
+                )
+            else:
+                start = self._find_available_start(
+                    task_date,
+                    proposed.get("preferred_time"),
+                    duration,
+                    booked,
+                    timezone,
+                )
             end = start + timedelta(minutes=duration)
-            booked.setdefault(task_date, []).append((start, end))
+            if not settings.is_protected_project(project_id, project["name"]):
+                booked.setdefault(task_date, []).append((start, end))
             start_date = self._format_datetime(start)
             due_date = self._format_datetime(end)
             task = await self.ticktick.create_task(
                 {
                     "title": title,
                     "content": content,
-                    "projectId": settings.ticktick_default_project_id,
+                    "projectId": project_id,
                     "priority": int(proposed.get("priority", 0)),
                     "startDate": start_date,
                     "dueDate": due_date,
@@ -63,9 +94,7 @@ class TaskBreakdownService:
                     id=task.get("id"),
                     title=task.get("title", title),
                     content=task.get("content", content),
-                    projectId=task.get(
-                        "projectId", settings.ticktick_default_project_id
-                    ),
+                    projectId=task.get("projectId", project_id),
                     startDate=start_date,
                     dueDate=due_date,
                 )
@@ -75,6 +104,16 @@ class TaskBreakdownService:
             raise ValueError("AI did not return any valid tasks")
 
         return TaskBreakdownResponse(source_text=request.text, created=created)
+
+    @staticmethod
+    def _appointment_start(
+        task_date: date, preferred_time: object, timezone: ZoneInfo
+    ) -> datetime:
+        try:
+            requested = time.fromisoformat(str(preferred_time))
+        except (TypeError, ValueError):
+            requested = settings.working_start_time
+        return datetime.combine(task_date, requested, tzinfo=timezone)
 
     @staticmethod
     def _task_date(value: object, today: date) -> date:

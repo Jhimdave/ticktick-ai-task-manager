@@ -27,6 +27,21 @@ class Settings(BaseSettings):
     def protected_project_list(self) -> list[str]:
         return [p.strip() for p in self.protected_projects.split(",") if p.strip()]
 
+    def is_protected_project(
+        self, project_id: str | None, project_name: str | None
+    ) -> bool:
+        protected_names = {
+            name.casefold() for name in self.protected_project_list
+        } | {"appointment", "appointments"}
+        protected_ids = {"appointment", "appointments"}
+        return (
+            project_id is not None
+            and str(project_id).strip().casefold() in protected_ids
+        ) or (
+            project_name is not None
+            and str(project_name).strip().casefold() in protected_names
+        )
+
     @property
     def working_start_time(self) -> time:
         h, m = map(int, self.working_hours_start.split(":"))

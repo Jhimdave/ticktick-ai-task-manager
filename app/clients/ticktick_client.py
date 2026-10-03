@@ -84,7 +84,10 @@ class TickTickClient:
                 f"{self.base_url}/project", headers=self._headers(), timeout=15
             )
             r.raise_for_status()
-            return r.json()
+            return [
+                {"id": project["id"], "name": project["name"]}
+                for project in r.json()
+            ]
 
     async def get_project_data(self, project_id: str) -> dict:
         async with httpx.AsyncClient() as client:

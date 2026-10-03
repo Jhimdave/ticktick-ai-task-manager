@@ -8,11 +8,11 @@ from integration import TickTickApi
 
 async def main():
     load_dotenv()
-    api_key = os.getenv("TICKTICK_API_KEY")
+    api_key = os.getenv("TICKTICK_ACCESS_TOKEN")
     
     if not api_key:
         raise SystemExit(
-            "Missing TICKTICK_API_KEY. Add it to .env before running this script."
+            "Missing TICKTICK_ACCESS_TOKEN. Add it to .env before running this script."
         )
         
     ticktick_api = TickTickApi(api_key)

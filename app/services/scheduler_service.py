@@ -111,7 +111,7 @@ class SchedulerService:
 
             project_name = name_by_id.get(task.get("projectId"), "")
 
-            if project_name in settings.protected_project_list:
+            if settings.is_protected_project(task.get("projectId"), project_name):
                 fixed_tasks.append(task)
                 continue
 

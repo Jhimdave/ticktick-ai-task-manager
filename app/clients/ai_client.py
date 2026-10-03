@@ -86,15 +86,7 @@ class AIService:
                 raise
             return self.gemini.complete_json(system, user)
 
-    def estimate_duration(
-        self,
-        task_title: str,
-        task_content: str,
-        priority: int,
-        min_minutes: int,
-        max_minutes: int,
-        enhance_content: bool = False,
-    ) -> dict:
+    def estimate_duration( self, task_title: str, task_content: str, priority: int, min_minutes: int, max_minutes: int, enhance_content: bool = False ) -> dict:
         enhancement = (
             "Also improve the title and write a concise, actionable description. "
             "Return them as enhanced_title and description."
@@ -102,7 +94,7 @@ class AIService:
             else ""
         )
         output = (
-            '{"difficulty": int, "duration_minutes": int, "enhanced_title": str, "description": str}'
+            '{"difficulty": int, "duration_minutes": int, "enhanced_title": str, "description": str, "project_name" : str, "project_id": str}'
             if enhance_content
             else '{"difficulty": int, "duration_minutes": int}'
         )
@@ -121,7 +113,11 @@ class AIService:
         return self.complete_json(system, user)
 
     def break_down_task(
-        self, text: str, current_date: str, timezone: str
+        self,
+        text: str,
+        current_date: str,
+        timezone: str,
+        projects: list[dict],
     ) -> list[dict]:
         system = (
             "You are a task-planning and scheduling assistant. Break the user's text into the "
@@ -130,9 +126,13 @@ class AIService:
             "Use the supplied current date to resolve relative dates such as tomorrow, Tuesday, "
             "or September 3. If no date is stated, set date to the current date. If no time is "
             "stated, set preferred_time to null so the application can assign an available slot. "
+            "Choose a project for every task using one of the supplied projects and return its "
+            "exact id as project_id. Never invent a project id. For projects named or identified "
+            "as Appointment or Appointments, preserve any date and exact time stated by the user. "
             'Return ONLY JSON with this shape: {"tasks": [{"title": str, '
             '"description": str, "date": "YYYY-MM-DD", "preferred_time": '
-            '"HH:MM" or null, "duration_minutes": int, "priority": int}]}'
+            '"HH:MM" or null, "duration_minutes": int, "priority": int, '
+            '"project_id": str}]}'
         )
         result = self.complete_json(
             system,
@@ -141,6 +141,7 @@ class AIService:
                     "text": text,
                     "current_date": current_date,
                     "timezone": timezone,
+                    "projects": projects,
                 }
             ),
         )
