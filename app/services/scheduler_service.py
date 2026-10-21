@@ -44,27 +44,61 @@ def compute_free_blocks(day_start: datetime, day_end: datetime, busy: list[tuple
     return [block for block in free if block[1] > block[0]]
 
 
-def place_tasks(free_blocks: list[tuple[datetime, datetime]], tasks: list[dict], buffer_minutes: int) -> tuple[list[ScheduledTask], list[str]]:
+def _task_category(task: dict) -> int:
+    title = str(task.get("title", "")).casefold()
+    content = str(task.get("content", "")).casefold()
+    combined = f"{title} {content}"
+
+    if any(keyword in combined for keyword in ("slack", "reminder", "appointment", "meeting", "client", "work", "email")):
+        return 1
+    if any(keyword in combined for keyword in ("automation", "learning", "productivity", "workflow", "script", "system", "project", "build")):
+        return 2
+    return 0
+
+
+def place_tasks(
+    free_blocks: list[tuple[datetime, datetime]],
+    tasks: list[dict],
+    buffer_minutes: int,
+    break_every_tasks: int = 3,
+    break_minutes: int = 10,
+) -> tuple[list[ScheduledTask], list[str]]:
     blocks = list(free_blocks)
     scheduled = []
     unscheduled = []
+    tasks_since_break = 0
 
     for task in tasks:
         duration = timedelta(minutes=task["duration_minutes"])
         placed = False
 
         for i, (block_start, block_end) in enumerate(blocks):
-            if block_end - block_start < duration:
+            start = block_start
+            if tasks_since_break >= break_every_tasks:
+                start = max(start, block_start + timedelta(minutes=break_minutes))
+
+            if block_end - start < duration:
                 continue
 
-            end = block_start + duration
+            end = start + duration
 
             scheduled.append(
-                ScheduledTask(task_id=task["id"], title=task["title"], start=block_start, end=end, difficulty=task.get("difficulty"))
+                ScheduledTask(
+                    task_id=task["id"],
+                    title=task["title"],
+                    start=start,
+                    end=end,
+                    difficulty=task.get("difficulty"),
+                )
             )
 
-            new_start = end + timedelta(minutes=buffer_minutes)
-            blocks[i] = (new_start, block_end) if new_start < block_end else (block_end, block_end)
+            tasks_since_break += 1
+            next_start = end + timedelta(minutes=buffer_minutes)
+            if tasks_since_break >= break_every_tasks:
+                next_start += timedelta(minutes=break_minutes)
+                tasks_since_break = 0
+
+            blocks[i] = (next_start, block_end) if next_start < block_end else (block_end, block_end)
 
             placed = True
             break
@@ -146,6 +180,11 @@ class SchedulerService:
                 duration = settings.min_task_duration_minutes
                 difficulty = 3
 
+            category = _task_category({
+                "title": task.get("title", ""),
+                "content": task.get("content", ""),
+            })
+
             estimated.append(
                 {
                     "id": task["id"],
@@ -156,7 +195,8 @@ class SchedulerService:
                     "due": parse_dt(task.get("dueDate")),
                     "has_description": has_description,
                     "enhanced_title": estimate.get("enhanced_title"),
-                    "description": estimate.get("description")
+                    "description": estimate.get("description"),
+                    "category": category,
                 }
             )
 
@@ -164,10 +204,12 @@ class SchedulerService:
 
         estimated.sort(
             key=lambda task: (
+                task["category"],
+                task["duration_minutes"],
                 0 if task["due"] and task["due"].astimezone(tz).date() < today else 1,
                 task["due"] or far_future,
                 -task["priority"],
-                task["difficulty"]
+                task["difficulty"],
             )
         )
 

@@ -120,20 +120,13 @@ class AIService:
         projects: list[dict],
     ) -> list[dict]:
         system = (
-            "You are a task-planning and scheduling assistant. Break the user's text into the "
-            "smallest useful set of independent TickTick tasks. Create a clear action-oriented "
-            "title and concise description for every task. Extract dates and times when stated. "
-            "Use the supplied current date to resolve relative dates such as tomorrow, Tuesday, "
-            "or September 3. If no date is stated, set date to the current date. If no time is "
-            "stated, set preferred_time to null so the application can assign an available slot. "
-            "Choose a project for every task using one of the supplied projects and return its "
-            "exact id as project_id. But if the task have a given date and time put it into Appointment Project." 
-            "Never invent a project id. For projects named or identified "
-            "as Appointment or Appointments, preserve any date and exact time stated by the user. "
-            'Return ONLY JSON with this shape: {"tasks": [{"title": str, '
-            '"description": str, "date": "YYYY-MM-DD", "preferred_time": '
-            '"HH:MM" or null, "duration_minutes": int, "priority": int, '
-            '"project_id": str}]}'
+            "Create a short list of independent TickTick tasks from the user text. "
+            "Keep the prompt brief and output only valid JSON. "
+            "Use the supplied current date to resolve dates like tomorrow or Tuesday. "
+            "If no date is given, use today. If no time is given, set preferred_time to null. "
+            "If a task includes an exact date/time, keep it in the Appointment project. "
+            "Prefer task ordering as: short/easy tasks first, then work/client tasks, then long personal automation tasks last. "
+            "Do not invent a project id. Return this shape only: {\"tasks\": [{\"title\": str, \"description\": str, \"date\": \"YYYY-MM-DD\", \"preferred_time\": \"HH:MM\" or null, \"duration_minutes\": int, \"priority\": int, \"project_id\": str}]}"
         )
         result = self.complete_json(
             system,
