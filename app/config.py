@@ -33,7 +33,11 @@ class Settings(BaseSettings):
         protected_names = {
             name.casefold() for name in self.protected_project_list
         } | {"appointment", "appointments"}
-        protected_ids = {"appointment", "appointments"}
+        protected_ids = {
+            "appointment",
+            "appointments",
+            "6a36da68cf4b116ed0a4150a",
+        }
         return (
             project_id is not None
             and str(project_id).strip().casefold() in protected_ids

@@ -3,6 +3,18 @@
 
 This file records meaningful AI-assisted code changes. The newest entry belongs at the top.
 
+## 2026-10-21 — Lock the TickTick Appointments project
+
+**Summary:** Exclude the user's `🤝Appointments` project from schedule updates by protecting its TickTick project ID.
+
+**Files changed:**
+- `app/config.py` — Add project ID `6a36da68cf4b116ed0a4150a` to protected project IDs so the scheduler leaves its task dates and times untouched, including overdue tasks and tasks outside working hours.
+- `docs/AI_CHANGELOG.md` — Record the project-specific protection and regression validation.
+
+**Tests:** Focused runtime check verified the project ID is protected and a task with an overdue, outside-working-hours schedule is not sent to TickTick for update; `python -m compileall -q app scripts`; `git diff --check`.
+
+**Risks or follow-up:** Protection is tied to this TickTick project ID. If the project is deleted and recreated, its new ID must also be protected.
+
 ## 2026-10-21 — Preserve appointment project task dates
 
 **Summary:** Prevent tasks returned by a protected TickTick project from becoming rescheduling candidates when the API omits or returns an inconsistent `projectId`.
