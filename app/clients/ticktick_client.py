@@ -103,7 +103,7 @@ class TickTickClient:
         data = await self.get_project_data(project_id)
 
         return [
-            {**task, "projectId": task.get("projectId", project_id)}
+            {**task, "projectId": project_id}
             for task in data.get("tasks", [])
         ]
 

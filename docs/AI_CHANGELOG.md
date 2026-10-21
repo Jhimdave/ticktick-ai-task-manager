@@ -3,6 +3,18 @@
 
 This file records meaningful AI-assisted code changes. The newest entry belongs at the top.
 
+## 2026-10-21 — Preserve appointment project task dates
+
+**Summary:** Prevent tasks returned by a protected TickTick project from becoming rescheduling candidates when the API omits or returns an inconsistent `projectId`.
+
+**Files changed:**
+- `app/clients/ticktick_client.py` — Set each task's `projectId` from the project-data endpoint that returned it, ensuring the scheduler can reliably recognize protected projects such as Appointments.
+- `docs/AI_CHANGELOG.md` — Record the root cause and validation.
+
+**Tests:** Focused runtime regression check covered tasks with missing, `null`, empty, and mismatched `projectId` values; `python -m compileall -q app scripts`; `git diff --check`.
+
+**Risks or follow-up:** This treats the project endpoint as authoritative for a task's project association, which is needed to preserve protected-project behavior during scheduling.
+
 ## 2026-10-21 — Surface TickTick schedule update failures
 
 **Summary:** Include each task's project ID when writing its scheduled dates to TickTick, and return HTTP 502 from `POST /schedule` when any task update fails.
