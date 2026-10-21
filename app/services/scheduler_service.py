@@ -109,6 +109,14 @@ def place_tasks(
     return scheduled, unscheduled
 
 
+class ScheduleUpdateError(Exception):
+    def __init__(self, failed_task_ids: list[str]):
+        self.failed_task_ids = failed_task_ids
+        super().__init__(
+            f"Failed to update {len(failed_task_ids)} scheduled task(s) in TickTick."
+        )
+
+
 class SchedulerService:
     """Milestone 2: schedule overdue and today's tasks from the current time forward."""
 
@@ -273,6 +281,7 @@ class SchedulerService:
 
         by_id = {task["id"]: task for task in candidates}
         estimated_by_id = {task["id"]: task for task in estimated}
+        failed_task_ids = []
 
         for scheduled_task in scheduled:
             task = by_id[scheduled_task.task_id]
@@ -298,7 +307,9 @@ class SchedulerService:
                 )
 
             try:
-                await self.ticktick.update_task(task["id"], **update_fields)
+                await self.ticktick.update_task(
+                    task["id"], project_id=task.get("projectId"), **update_fields
+                )
 
                 logger.info(
                     "scheduled task %s: %s -> %s",
@@ -309,6 +320,10 @@ class SchedulerService:
 
             except Exception:
                 logger.exception("failed updating schedule for %s", scheduled_task.task_id)
+                failed_task_ids.append(scheduled_task.task_id)
+
+        if failed_task_ids:
+            raise ScheduleUpdateError(failed_task_ids)
 
         return ScheduleResponse(
             scheduled=scheduled,

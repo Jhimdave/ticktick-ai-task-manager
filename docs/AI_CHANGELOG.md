@@ -3,6 +3,19 @@
 
 This file records meaningful AI-assisted code changes. The newest entry belongs at the top.
 
+## 2026-10-21 — Surface TickTick schedule update failures
+
+**Summary:** Include each task's project ID when writing its scheduled dates to TickTick, and return HTTP 502 from `POST /schedule` when any task update fails.
+
+**Files changed:**
+- `app/services/scheduler_service.py` — Pass the task's `projectId` to TickTick, collect failed task IDs while continuing other updates, and raise `ScheduleUpdateError` after all scheduled tasks have been attempted.
+- `app/routers/scheduler.py` — Convert `ScheduleUpdateError` into HTTP 502 with a message and the failed task IDs.
+- `docs/AI_CHANGELOG.md` — Record this fix and its validation.
+
+**Tests:** `.venv\Scripts\python.exe -m compileall -q app scripts`; focused Pylance runtime check verified project ID forwarding, successful scheduling, and HTTP 502 failure reporting.
+
+**Risks or follow-up:** Some tasks may already be updated before a partial failure returns 502. The response identifies failed task IDs; retrying `/schedule` may schedule and update tasks again.
+
 ## 2026-10-21 — Scheduler priority and prompt tightening
 
 **Summary:** Adjusted schedule ordering to prioritize short/easy tasks before work tasks and long personal automation tasks, while preserving fixed appointment slots and reserving short break gaps without creating explicit break tasks. Reduced AI prompt length to keep task generation more stable on long user inputs.
